@@ -1,65 +1,183 @@
 package org.openjfx;
 
+
 import javafx.application.Application;
-import javafx.scene.Group;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
-import javafx.scene.image.Image;
-import javafx.scene.layout.StackPane;
-import javafx.scene.paint.Color;
+import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import java.text.DecimalFormat;
 
-import java.util.Scanner;
-
-/**
- * JavaFX App
- */
 public class App extends Application {
-
-//    @Override
-//    public void start(Stage stage) {
-//        var javaVersion = SystemInfo.javaVersion();
-//        var javafxVersion = SystemInfo.javafxVersion();
-//
-//        var label = new Label("Hello, JavaFX " + javafxVersion + ", running on Java " + javaVersion + ".");
-//        var scene = new Scene(new StackPane(label), 640, 480);
-//        stage.setScene(scene);
-//        stage.show();
-//    }
+    private TableView<Expense> expenseTable;
+    private ObservableList<Expense> expenses;
+    private DecimalFormat currencyFormat = new DecimalFormat("#,##0.00");
 
     public static void main(String[] args) {
         launch(args);
     }
 
     @Override
-    public void start(Stage stage) throws Exception {
-        Group root  = new Group(); // arrange all nodes
-        Scene scene = new Scene(root,600,600 ,Color.rgb(5,10,6)); // add root node to the scene
+    public void start(Stage primaryStage) {
+        // Initialize data
+        expenses = FXCollections.observableArrayList();
 
-//        Image icon = new Image("dollar.png"); // add icon
+        // Create tabs
+        TabPane tabPane = new TabPane();
+        tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
-        // place all images in main/resources and use the line below to get them
-        Image icon = new Image(getClass().getResource("/dollar.png").toExternalForm());
-        stage.getIcons().add(icon);
+        Tab expensesTab = createExpensesTab();
+        Tab historyTab = createHistoryTab();
 
-        // Set title of the Window
-        stage.setTitle("Personal Finance Tracker");
+        tabPane.getTabs().addAll(expensesTab, historyTab);
 
-        // set Width and height of window
-//        stage.setWidth(420);
-//        stage.setHeight(640);
+        // Create the main scene
+        BorderPane root = new BorderPane(tabPane);
+        Scene scene = new Scene(root, 800, 600);
 
-        // place window in the middle by default or somwhere else ?
-//        stage.setX();
-//        stage.setY();
+        primaryStage.setTitle("Expense Tracker");
+        primaryStage.setScene(scene);
+        primaryStage.show();
+    }
 
-        // allow window to be resized ?
-//        stage.setResizable(false);
+    private Tab createExpensesTab() {
+        Tab tab = new Tab("Expenses");
+        tab.setClosable(false);
 
-        // window Fullscreen by default ?
-//        stage.setFullScreen(true);
+        // Create UI components for Expenses tab
+        VBox expensesVBox = new VBox();
+        expensesVBox.setSpacing(10);
 
-        stage.setScene(scene); // set the scene before presenting it
-        stage.show();
+        Label titleLabel = new Label("Add an Expense");
+        titleLabel.getStyleClass().add("section-title");
+
+        TextField nameField = new TextField();
+        nameField.setPromptText("Expense Name");
+
+        DatePicker datePicker = new DatePicker();
+        datePicker.setPromptText("Select Date");
+
+        ChoiceBox<String> categoryChoiceBox = new ChoiceBox<>();
+        categoryChoiceBox.getItems().addAll("Personal", "Entertainment", "Travel", "Necessary");
+        categoryChoiceBox.setValue("Personal");
+
+        TextField amountField = new TextField();
+        amountField.setPromptText("Amount");
+
+        Button addButton = new Button("Add Expense");
+        addButton.setOnAction(e -> addExpense(nameField, datePicker, categoryChoiceBox, amountField));
+
+        expensesVBox.getChildren().addAll(titleLabel, nameField, datePicker, categoryChoiceBox, amountField, addButton);
+
+        // Create the Expenses table
+        expenseTable = new TableView<>();
+        expenseTable.setPlaceholder(new Label("No Expenses"));
+
+        TableColumn<Expense, String> nameColumn = new TableColumn<>("Expense Name");
+        nameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
+
+        TableColumn<Expense, String> amountColumn = new TableColumn<>("Amount");
+        amountColumn.setCellValueFactory(new PropertyValueFactory<>("amount"));
+
+        expenseTable.getColumns().addAll(nameColumn, amountColumn);
+        expenseTable.setItems(expenses);
+
+        expensesVBox.getChildren().addAll(expenseTable);
+
+        tab.setContent(expensesVBox);
+        return tab;
+    }
+
+    private Tab createHistoryTab() {
+        Tab tab = new Tab("History");
+        tab.setClosable(false);
+
+        // Create the Expenses table for the History tab
+        TableView<Expense> historyTable = new TableView<>();
+        historyTable.setPlaceholder(new Label("No Expenses"));
+
+        TableColumn<Expense, String> nameColumn = new TableColumn<>("Expense Name");
+        nameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
+
+        TableColumn<Expense, String> dateColumn = new TableColumn<>("Date");
+        dateColumn.setCellValueFactory(new PropertyValueFactory<>("date"));
+
+        TableColumn<Expense, String> categoryColumn = new TableColumn<>("Category");
+        categoryColumn.setCellValueFactory(new PropertyValueFactory<>("category"));
+
+        TableColumn<Expense, String> amountColumn = new TableColumn<>("Amount");
+        amountColumn.setCellValueFactory(new PropertyValueFactory<>("amount"));
+
+        historyTable.getColumns().addAll(nameColumn, dateColumn, categoryColumn, amountColumn);
+        historyTable.setItems(expenses);
+
+        tab.setContent(historyTable);
+        return tab;
+    }
+
+    private void addExpense(TextField nameField, DatePicker datePicker, ChoiceBox<String> categoryChoiceBox, TextField amountField) {
+        String name = nameField.getText();
+        String date = datePicker.getValue().toString();
+        String category = categoryChoiceBox.getValue();
+        double amount = 0.0;
+
+        try {
+            amount = Double.parseDouble(amountField.getText());
+        } catch (NumberFormatException e) {
+            showAlert("Invalid Input", "Please enter a valid amount.");
+            return;
+        }
+
+        Expense expense = new Expense(name, date, category, amount);
+        expenses.add(expense);
+
+        // Clear input fields
+        nameField.clear();
+        datePicker.setValue(null);
+        amountField.clear();
+
+        // Show a confirmation dialog
+        showAlert("Expense Added", "Expense has been added successfully.");
+    }
+
+    private void showAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    public static class Expense {
+        private final String name;
+        private final String date;
+        private final String category;
+        private final double amount;
+
+        public Expense(String name, String date, String category, double amount) {
+            this.name = name;
+            this.date = date;
+            this.category = category;
+            this.amount = amount;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public String getDate() {
+            return date;
+        }
+
+        public String getCategory() {
+            return category;
+        }
+
+        public double getAmount() {
+            return amount;
+        }
     }
 }

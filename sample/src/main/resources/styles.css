@@ -1,0 +1,26 @@
+.title-label {
+    -fx-font-size: 20;
+    -fx-font-weight: bold;
+}
+
+.text-field {
+    -fx-prompt-text-fill: gray;
+}
+
+.combo-box {
+    -fx-prompt-text-fill: gray;
+}
+
+.date-picker {
+    -fx-prompt-text-fill: gray;
+}
+
+.add-button {
+    -fx-background-color: black;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.table-view {
+    -fx-cell-size: 30;
+}
