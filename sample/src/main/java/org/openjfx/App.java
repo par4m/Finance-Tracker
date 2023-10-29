@@ -1,5 +1,4 @@
 package org.openjfx;
-
 import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -8,18 +7,21 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
-
 import java.io.*;
 import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.Locale;
 
 public class App extends Application {
     private TableView<Expense> expenseTable;
+    private TableView<Expense> historyTable;
     private ObservableList<Expense> expenses;
     private DecimalFormat currencyFormat = new DecimalFormat("#,##0.00");
-    private static SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+    private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
     public static void main(String[] args) {
         launch(args);
@@ -29,6 +31,7 @@ public class App extends Application {
     public void start(Stage primaryStage) {
         // Initialize data
         expenses = FXCollections.observableArrayList();
+        loadExpensesFromStorage();
 
         // Create tabs
         TabPane tabPane = new TabPane();
@@ -46,16 +49,12 @@ public class App extends Application {
         primaryStage.setTitle("Expense Tracker");
         primaryStage.setScene(scene);
         primaryStage.show();
-
-        // Load expenses from storage
-        loadExpensesFromStorage();
     }
 
     private void loadExpensesFromStorage() {
         ArrayList<Expense> loadedExpenses = ExpenseStorage.loadExpenses();
         if (loadedExpenses != null) {
-            expenses.setAll(loadedExpenses); // Update the expenses list
-            expenseTable.setItems(expenses); // Set the items in the table with the updated data
+            expenses.addAll(loadedExpenses);
         }
     }
 
@@ -103,6 +102,7 @@ public class App extends Application {
         amountColumn.setCellValueFactory(new PropertyValueFactory<>("amount"));
 
         expenseTable.getColumns().addAll(nameColumn, dateColumn, categoryColumn, amountColumn);
+        expenseTable.setItems(expenses);
 
         expensesVBox.getChildren().addAll(titleLabel, nameField, datePicker, categoryChoiceBox, amountField, addButton, expenseTable);
 
@@ -115,7 +115,7 @@ public class App extends Application {
         tab.setClosable(false);
 
         // Create the Expenses table for the History tab
-        TableView<Expense> historyTable = new TableView<>();
+        historyTable = new TableView<>();
         historyTable.setPlaceholder(new Label("No Expenses"));
 
         TableColumn<Expense, String> nameColumn = new TableColumn<>("Expense Name");
@@ -131,9 +131,36 @@ public class App extends Application {
         amountColumn.setCellValueFactory(new PropertyValueFactory<>("amount"));
 
         historyTable.getColumns().addAll(nameColumn, dateColumn, categoryColumn, amountColumn);
+        updateHistoryTable();
 
         tab.setContent(historyTable);
         return tab;
+    }
+
+    private void updateHistoryTable() {
+        // Filter and display expenses for the current month
+        Calendar currentMonth = Calendar.getInstance();
+        currentMonth.set(Calendar.DAY_OF_MONTH, 1); // Start of the current month
+
+        ObservableList<Expense> currentMonthExpenses = FXCollections.observableArrayList();
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
+
+        for (Expense expense : expenses) {
+            try {
+                Date expenseDate = dateFormat.parse(expense.getDate());
+                Calendar expenseCalendar = Calendar.getInstance();
+                expenseCalendar.setTime(expenseDate);
+
+                if (expenseCalendar.get(Calendar.YEAR) == currentMonth.get(Calendar.YEAR) &&
+                        expenseCalendar.get(Calendar.MONTH) == currentMonth.get(Calendar.MONTH)) {
+                    currentMonthExpenses.add(expense);
+                }
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+        }
+
+        historyTable.setItems(currentMonthExpenses);
     }
 
     private void addExpense(TextField nameField, DatePicker datePicker, ChoiceBox<String> categoryChoiceBox, TextField amountField) {
@@ -159,6 +186,9 @@ public class App extends Application {
 
         // Show a confirmation dialog
         showAlert("Expense Added", "Expense has been added successfully.");
+
+        // Update the history table
+        updateHistoryTable();
 
         // Save expenses to storage
         ExpenseStorage.saveExpenses(new ArrayList<>(expenses));
