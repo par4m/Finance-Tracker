@@ -1,6 +1,5 @@
 package org.openjfx;
 
-
 import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -9,12 +8,18 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+
+import java.io.*;
 import java.text.DecimalFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 
 public class App extends Application {
     private TableView<Expense> expenseTable;
     private ObservableList<Expense> expenses;
     private DecimalFormat currencyFormat = new DecimalFormat("#,##0.00");
+    private static SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
     public static void main(String[] args) {
         launch(args);
@@ -41,6 +46,17 @@ public class App extends Application {
         primaryStage.setTitle("Expense Tracker");
         primaryStage.setScene(scene);
         primaryStage.show();
+
+        // Load expenses from storage
+        loadExpensesFromStorage();
+    }
+
+    private void loadExpensesFromStorage() {
+        ArrayList<Expense> loadedExpenses = ExpenseStorage.loadExpenses();
+        if (loadedExpenses != null) {
+            expenses.setAll(loadedExpenses); // Update the expenses list
+            expenseTable.setItems(expenses); // Set the items in the table with the updated data
+        }
     }
 
     private Tab createExpensesTab() {
@@ -70,8 +86,6 @@ public class App extends Application {
         Button addButton = new Button("Add Expense");
         addButton.setOnAction(e -> addExpense(nameField, datePicker, categoryChoiceBox, amountField));
 
-        expensesVBox.getChildren().addAll(titleLabel, nameField, datePicker, categoryChoiceBox, amountField, addButton);
-
         // Create the Expenses table
         expenseTable = new TableView<>();
         expenseTable.setPlaceholder(new Label("No Expenses"));
@@ -79,13 +93,18 @@ public class App extends Application {
         TableColumn<Expense, String> nameColumn = new TableColumn<>("Expense Name");
         nameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
 
-        TableColumn<Expense, String> amountColumn = new TableColumn<>("Amount");
+        TableColumn<Expense, String> dateColumn = new TableColumn<>("Date");
+        dateColumn.setCellValueFactory(new PropertyValueFactory<>("date"));
+
+        TableColumn<Expense, String> categoryColumn = new TableColumn<>("Category");
+        categoryColumn.setCellValueFactory(new PropertyValueFactory<>("category"));
+
+        TableColumn<Expense, Double> amountColumn = new TableColumn<>("Amount");
         amountColumn.setCellValueFactory(new PropertyValueFactory<>("amount"));
 
-        expenseTable.getColumns().addAll(nameColumn, amountColumn);
-        expenseTable.setItems(expenses);
+        expenseTable.getColumns().addAll(nameColumn, dateColumn, categoryColumn, amountColumn);
 
-        expensesVBox.getChildren().addAll(expenseTable);
+        expensesVBox.getChildren().addAll(titleLabel, nameField, datePicker, categoryChoiceBox, amountField, addButton, expenseTable);
 
         tab.setContent(expensesVBox);
         return tab;
@@ -108,11 +127,10 @@ public class App extends Application {
         TableColumn<Expense, String> categoryColumn = new TableColumn<>("Category");
         categoryColumn.setCellValueFactory(new PropertyValueFactory<>("category"));
 
-        TableColumn<Expense, String> amountColumn = new TableColumn<>("Amount");
+        TableColumn<Expense, Double> amountColumn = new TableColumn<>("Amount");
         amountColumn.setCellValueFactory(new PropertyValueFactory<>("amount"));
 
         historyTable.getColumns().addAll(nameColumn, dateColumn, categoryColumn, amountColumn);
-        historyTable.setItems(expenses);
 
         tab.setContent(historyTable);
         return tab;
@@ -141,6 +159,9 @@ public class App extends Application {
 
         // Show a confirmation dialog
         showAlert("Expense Added", "Expense has been added successfully.");
+
+        // Save expenses to storage
+        ExpenseStorage.saveExpenses(new ArrayList<>(expenses));
     }
 
     private void showAlert(String title, String message) {
@@ -178,6 +199,38 @@ public class App extends Application {
 
         public double getAmount() {
             return amount;
+        }
+    }
+
+    public static class ExpenseStorage {
+        private static final String FILENAME = "expenses.txt";
+
+        public static void saveExpenses(ArrayList<Expense> expenses) {
+            try (PrintWriter writer = new PrintWriter(new FileWriter(FILENAME))) {
+                for (Expense e : expenses) {
+                    writer.println(e.getDate() + "," + e.getName() + "," + e.getCategory() + "," + e.getAmount());
+                }
+            } catch (IOException e) {
+                System.out.println("Error saving expenses: " + e.getMessage());
+            }
+        }
+
+        public static ArrayList<Expense> loadExpenses() {
+            ArrayList<Expense> expenses = new ArrayList<>();
+
+            try (BufferedReader reader = new BufferedReader(new FileReader(FILENAME))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    String[] parts = line.split(",");
+                    if (parts.length == 4) {
+                        Expense expense = new Expense(parts[1], parts[0], parts[2], Double.parseDouble(parts[3]));
+                        expenses.add(expense);
+                    }
+                }
+            } catch (IOException | NumberFormatException e) {
+                System.out.println("Error loading expenses: " + e.getMessage());
+            }
+            return expenses;
         }
     }
 }
