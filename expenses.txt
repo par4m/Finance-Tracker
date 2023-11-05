@@ -4,3 +4,5 @@
 2023-10-06,sss,Personal,400.0
 2023-10-30,pa,Personal,30.0
 2023-11-02,oop,Entertainment,30.0
+2023-11-06,p,Travel,20.0
+2023-11-08,abc,Necessary,40.0

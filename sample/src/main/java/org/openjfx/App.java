@@ -3,11 +3,11 @@ import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.Scene;
+import javafx.scene.chart.PieChart;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
-import javafx.scene.text.Text;
 import java.io.*;
 import java.text.DecimalFormat;
 import java.text.ParseException;
@@ -16,15 +16,17 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
+import javafx.scene.text.Text;
 
 public class App extends Application {
     private TableView<Expense> expenseTable;
     private TableView<Expense> historyTable;
     private ObservableList<Expense> expenses;
-    private Text totalSpentText; // Declare totalSpentText as an instance variable
     private DecimalFormat currencyFormat = new DecimalFormat("#,##0.00");
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-    private Label totalSpentLabel;  // Declare totalSpentLabel as an instance variable
+    private Text totalSpentText;
+    private ChoiceBox<String> monthChoiceBox;
+    private PieChart categoryPieChart;
 
     public static void main(String[] args) {
         launch(args);
@@ -42,8 +44,9 @@ public class App extends Application {
 
         Tab expensesTab = createExpensesTab();
         Tab historyTab = createHistoryTab();
+        Tab overviewTab = createOverviewTab();
 
-        tabPane.getTabs().addAll(expensesTab, historyTab);
+        tabPane.getTabs().addAll(expensesTab, historyTab, overviewTab);
 
         // Create the main scene
         BorderPane root = new BorderPane(tabPane);
@@ -71,10 +74,6 @@ public class App extends Application {
 
         Label titleLabel = new Label("Add an Expense");
         titleLabel.getStyleClass().add("section-title");
-        titleLabel.setStyle("-fx-font-size: 16pt;"); // Adjust the font size as needed
-
-
-
 
         TextField nameField = new TextField();
         nameField.setPromptText("Expense Name");
@@ -93,9 +92,9 @@ public class App extends Application {
         addButton.setOnAction(e -> addExpense(nameField, datePicker, categoryChoiceBox, amountField));
 
         // Create a Text element to display the total spent for this month
-        totalSpentText = new Text("Total Spent this Month: $0.00");
+        totalSpentText = new Text("Total Spent for This Month: $0.00");
         totalSpentText.getStyleClass().add("total-spent-text");
-        totalSpentText.setStyle("-fx-font-size: 16pt;"); // Adjust the font size as needed
+        totalSpentText.setStyle("-fx-font-size: 18pt;");
 
         // Create the Expenses table and apply the current month filter by default
         expenseTable = new TableView<>();
@@ -181,9 +180,91 @@ public class App extends Application {
         expenseTable.setItems(currentMonthExpenses);
 
         // Update the total spent text
-        totalSpentText.setText("Total Spent this Month: $" + currencyFormat.format(totalSpent));
+        totalSpentText.setText("Total Spent for This Month: $" + currencyFormat.format(totalSpent));
     }
 
+    private Tab createOverviewTab() {
+        Tab tab = new Tab("Overview");
+        tab.setClosable(false);
+
+        // Create UI components for Overview tab
+        VBox overviewVBox = new VBox();
+        overviewVBox.setSpacing(10);
+
+        // Create a ChoiceBox for selecting the month
+        monthChoiceBox = new ChoiceBox<>();
+        monthChoiceBox.setItems(FXCollections.observableArrayList(
+                "January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"
+        ));
+        monthChoiceBox.setValue(getCurrentMonth()); // Set the default value to the current month
+
+        // Create a PieChart to display spending by categories
+        categoryPieChart = new PieChart();
+        categoryPieChart.setTitle("Spending by Category");
+
+        // Create a Text element to display the total spent for the selected month
+        totalSpentText = new Text("Total Spent for " + getCurrentMonth() + ": $0.00");
+        totalSpentText.getStyleClass().add("total-spent-text");
+
+        // Add UI components to the VBox
+        overviewVBox.getChildren().addAll(monthChoiceBox, categoryPieChart, totalSpentText);
+
+        // Add the VBox to the tab
+        tab.setContent(overviewVBox);
+
+        // Set an event handler for the monthChoiceBox
+        monthChoiceBox.setOnAction(e -> updateOverview());
+
+        return tab;
+    }
+
+    // Helper method to get the current month
+    private String getCurrentMonth() {
+        Calendar calendar = Calendar.getInstance();
+        SimpleDateFormat dateFormat = new SimpleDateFormat("MMMM", Locale.ENGLISH);
+        return dateFormat.format(calendar.getTime());
+    }
+
+    // Helper method to update the Overview tab when a month is selected
+    // Helper method to update the Overview tab when a month is selected
+    // Helper method to update the Overview tab when a month is selected
+    private void updateOverview() {
+        String selectedMonth = monthChoiceBox.getValue();
+
+        ObservableList<PieChart.Data> pieChartData = FXCollections.observableArrayList();
+
+        double totalSpent = 0.0;
+        for (Expense expense : expenses) {
+            try {
+                Date expenseDate = dateFormat.parse(expense.getDate());
+                Calendar expenseCalendar = Calendar.getInstance();
+                expenseCalendar.setTime(expenseDate);
+
+                if (selectedMonth.equalsIgnoreCase(new SimpleDateFormat("MMMM", Locale.ENGLISH).format(expenseDate))) {
+                    totalSpent += expense.getAmount();
+                    updateCategoryData(pieChartData, expense.getCategory(), expense.getAmount());
+                }
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+        }
+
+        categoryPieChart.setData(pieChartData);
+        totalSpentText.setText("Total Spent for " + selectedMonth + ": $" + currencyFormat.format(totalSpent));
+    }
+    // Helper method to find or create a category in the pie chart data
+    private void updateCategoryData(ObservableList<PieChart.Data> pieChartData, String categoryName, double amount) {
+        for (PieChart.Data data : pieChartData) {
+            if (data.getName().equals(categoryName)) {
+                data.setPieValue(data.getPieValue() + amount);
+                return;
+            }
+        }
+
+        PieChart.Data newData = new PieChart.Data(categoryName, amount);
+        pieChartData.add(newData);
+    }
     private void addExpense(TextField nameField, DatePicker datePicker, ChoiceBox<String> categoryChoiceBox, TextField amountField) {
         String name = nameField.getText();
         String date = datePicker.getValue().toString();
