@@ -6,3 +6,8 @@
 2023-11-02,oop,Entertainment,30.0
 2023-11-06,p,Travel,20.0
 2023-11-08,abc,Necessary,40.0
+2023-11-09,aaa,Personal,60.0
+2023-11-04,abc,Travel,60.0
+2023-11-08,a,Personal,3.0
+2023-11-02,abccc,Entertainment,3.0
+2023-11-09,agc,Entertainment,30.0
