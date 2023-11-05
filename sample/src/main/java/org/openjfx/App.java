@@ -7,6 +7,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import javafx.scene.text.Text;
 import java.io.*;
 import java.text.DecimalFormat;
 import java.text.ParseException;
@@ -16,13 +17,14 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 
-
 public class App extends Application {
     private TableView<Expense> expenseTable;
     private TableView<Expense> historyTable;
     private ObservableList<Expense> expenses;
+    private Text totalSpentText; // Declare totalSpentText as an instance variable
     private DecimalFormat currencyFormat = new DecimalFormat("#,##0.00");
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+    private Label totalSpentLabel;  // Declare totalSpentLabel as an instance variable
 
     public static void main(String[] args) {
         launch(args);
@@ -69,6 +71,10 @@ public class App extends Application {
 
         Label titleLabel = new Label("Add an Expense");
         titleLabel.getStyleClass().add("section-title");
+        titleLabel.setStyle("-fx-font-size: 16pt;"); // Adjust the font size as needed
+
+
+
 
         TextField nameField = new TextField();
         nameField.setPromptText("Expense Name");
@@ -85,6 +91,11 @@ public class App extends Application {
 
         Button addButton = new Button("Add Expense");
         addButton.setOnAction(e -> addExpense(nameField, datePicker, categoryChoiceBox, amountField));
+
+        // Create a Text element to display the total spent for this month
+        totalSpentText = new Text("Total Spent this Month: $0.00");
+        totalSpentText.getStyleClass().add("total-spent-text");
+        totalSpentText.setStyle("-fx-font-size: 16pt;"); // Adjust the font size as needed
 
         // Create the Expenses table and apply the current month filter by default
         expenseTable = new TableView<>();
@@ -107,7 +118,7 @@ public class App extends Application {
         // Filter and display expenses for the current month
         updateCurrentMonthExpenses();
 
-        expensesVBox.getChildren().addAll(titleLabel, nameField, datePicker, categoryChoiceBox, amountField, addButton, expenseTable);
+        expensesVBox.getChildren().addAll(titleLabel, nameField, datePicker, categoryChoiceBox, amountField, addButton, totalSpentText, expenseTable);
 
         tab.setContent(expensesVBox);
         return tab;
@@ -149,6 +160,7 @@ public class App extends Application {
 
         ObservableList<Expense> currentMonthExpenses = FXCollections.observableArrayList();
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
+        double totalSpent = 0.0;
 
         for (Expense expense : expenses) {
             try {
@@ -159,6 +171,7 @@ public class App extends Application {
                 if (expenseCalendar.get(Calendar.YEAR) == currentMonth.get(Calendar.YEAR) &&
                         expenseCalendar.get(Calendar.MONTH) == currentMonth.get(Calendar.MONTH)) {
                     currentMonthExpenses.add(expense);
+                    totalSpent += expense.getAmount();
                 }
             } catch (ParseException e) {
                 e.printStackTrace();
@@ -166,6 +179,9 @@ public class App extends Application {
         }
 
         expenseTable.setItems(currentMonthExpenses);
+
+        // Update the total spent text
+        totalSpentText.setText("Total Spent this Month: $" + currencyFormat.format(totalSpent));
     }
 
     private void addExpense(TextField nameField, DatePicker datePicker, ChoiceBox<String> categoryChoiceBox, TextField amountField) {
@@ -193,7 +209,7 @@ public class App extends Application {
         showAlert("Expense Added", "Expense has been added successfully.");
 
         // Update the history table
-        historyTable.setItems(expenses);
+        updateCurrentMonthExpenses();
 
         // Save expenses to storage
         ExpenseStorage.saveExpenses(new ArrayList<>(expenses));
