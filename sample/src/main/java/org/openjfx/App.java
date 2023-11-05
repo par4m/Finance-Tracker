@@ -16,6 +16,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 
+
 public class App extends Application {
     private TableView<Expense> expenseTable;
     private TableView<Expense> historyTable;
@@ -85,7 +86,7 @@ public class App extends Application {
         Button addButton = new Button("Add Expense");
         addButton.setOnAction(e -> addExpense(nameField, datePicker, categoryChoiceBox, amountField));
 
-        // Create the Expenses table
+        // Create the Expenses table and apply the current month filter by default
         expenseTable = new TableView<>();
         expenseTable.setPlaceholder(new Label("No Expenses"));
 
@@ -102,7 +103,9 @@ public class App extends Application {
         amountColumn.setCellValueFactory(new PropertyValueFactory<>("amount"));
 
         expenseTable.getColumns().addAll(nameColumn, dateColumn, categoryColumn, amountColumn);
-        expenseTable.setItems(expenses);
+
+        // Filter and display expenses for the current month
+        updateCurrentMonthExpenses();
 
         expensesVBox.getChildren().addAll(titleLabel, nameField, datePicker, categoryChoiceBox, amountField, addButton, expenseTable);
 
@@ -131,13 +134,15 @@ public class App extends Application {
         amountColumn.setCellValueFactory(new PropertyValueFactory<>("amount"));
 
         historyTable.getColumns().addAll(nameColumn, dateColumn, categoryColumn, amountColumn);
-        updateHistoryTable();
+
+        // Load and display all expenses
+        historyTable.setItems(expenses);
 
         tab.setContent(historyTable);
         return tab;
     }
 
-    private void updateHistoryTable() {
+    private void updateCurrentMonthExpenses() {
         // Filter and display expenses for the current month
         Calendar currentMonth = Calendar.getInstance();
         currentMonth.set(Calendar.DAY_OF_MONTH, 1); // Start of the current month
@@ -160,7 +165,7 @@ public class App extends Application {
             }
         }
 
-        historyTable.setItems(currentMonthExpenses);
+        expenseTable.setItems(currentMonthExpenses);
     }
 
     private void addExpense(TextField nameField, DatePicker datePicker, ChoiceBox<String> categoryChoiceBox, TextField amountField) {
@@ -188,7 +193,7 @@ public class App extends Application {
         showAlert("Expense Added", "Expense has been added successfully.");
 
         // Update the history table
-        updateHistoryTable();
+        historyTable.setItems(expenses);
 
         // Save expenses to storage
         ExpenseStorage.saveExpenses(new ArrayList<>(expenses));
